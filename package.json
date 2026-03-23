@@ -2,7 +2,8 @@
 	"name": "@denizblue/vite-plugins",
 	"version": "1.0.0",
 	"description": "A collection of Vite plugins for various purposes",
-	"main": "index.js",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
 	"type": "module",
 	"files": ["dist"],
 	"scripts": {
