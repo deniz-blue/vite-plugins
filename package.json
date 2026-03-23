@@ -1,5 +1,5 @@
 {
-	"name": "@denizblue/vite-plugins",
+	"name": "@deniz-blue/vite-plugins",
 	"version": "1.0.0",
 	"description": "A collection of Vite plugins for various purposes",
 	"main": "dist/index.js",
