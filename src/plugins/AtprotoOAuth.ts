@@ -5,67 +5,67 @@ import { VirtualModule } from "./VirtualModule.js";
 
 const LOOPBACK_HOST = "127.0.0.1";
 export const AtprotoOAuth = (): Plugin[] => {
-	let _config: ResolvedConfig | null = null;
-	let _command: "build" | "serve" | null = null;
+	let resolvedConfig: ResolvedConfig | null = null;
+	let viteCommand: "build" | "serve" | null = null;
 
-	let _metadata: Record<string, any> | null = null;
-	let _scope: string = "atproto";
-	let _clientId: string | null = null;
-	let _redirectUri: string | null = null;
+	let oauthClientMetadata: Record<string, any> | null = null;
+	let oauthScope: string = "atproto";
+	let oauthClientId: string | null = null;
+	let oauthRedirectUri: string | null = null;
 
 	const readMetadata = () => {
-		const path = join(_config!.root, _config!.publicDir, "oauth-client-metadata.json");
+		const path = join(resolvedConfig!.publicDir, "oauth-client-metadata.json");
 		try {
 			const content = readFileSync(path, "utf-8");
-			_metadata = JSON.parse(content);
+			oauthClientMetadata = JSON.parse(content);
 		} catch (err) {
 			console.warn(`[AtprotoOAuth] Failed to read oauth-client-metadata.json at ${path}. Please ensure the file exists and is valid JSON.`);
-			_metadata = {};
+			oauthClientMetadata = {};
 		}
 	};
 
 	const parseMetadata = () => {
-		if (!_metadata) return;
+		if (!oauthClientMetadata) return;
 
-		if (!(_metadata.client_id && _metadata.redirect_uris && _metadata.scope)) {
+		if (!(oauthClientMetadata.client_id && oauthClientMetadata.redirect_uris && oauthClientMetadata.scope)) {
 			console.warn(`[AtprotoOAuth] Missing required fields in oauth-client-metadata.json. Please ensure it contains "client_id", "redirect_uris", and "scope".`);
 			return;
 		}
 
-		_scope = _metadata.scope;
-		if (_command === "build") {
-			_clientId = _metadata.client_id;
-			_redirectUri = _metadata.redirect_uris[0];
+		oauthScope = oauthClientMetadata.scope;
+		if (viteCommand === "build") {
+			oauthClientId = oauthClientMetadata.client_id;
+			oauthRedirectUri = oauthClientMetadata.redirect_uris[0];
 		} else {
-			const host = _config!.server?.host || LOOPBACK_HOST;
-			const port = _config!.server?.port || 5173;
-			_redirectUri = `http://${host}:${port}${new URL(_metadata.redirect_uris[0]!).pathname}`;
-			_clientId =
+			const host = resolvedConfig!.server?.host || LOOPBACK_HOST;
+			const port = resolvedConfig!.server?.port || 5173;
+			oauthRedirectUri = `http://${host}:${port}${new URL(oauthClientMetadata.redirect_uris[0]!).pathname}`;
+			oauthClientId =
 				`http://localhost?${new URLSearchParams([
-					["redirect_uri", _redirectUri],
-					["scope", _scope],
+					["redirect_uri", oauthRedirectUri],
+					["scope", oauthScope],
 				]).toString()}`;
 		}
 	};
 
 	const setupEnv = () => {
-		process.env.VITE_OAUTH_SCOPE = _scope;
-		process.env.VITE_OAUTH_CLIENT_ID = _clientId || "";
-		process.env.VITE_OAUTH_REDIRECT_URI = _redirectUri || "";
-		process.env.VITE_OAUTH_METADATA = JSON.stringify(_metadata);
+		process.env.VITE_OAUTH_SCOPE = oauthScope;
+		process.env.VITE_OAUTH_CLIENT_ID = oauthClientId || "";
+		process.env.VITE_OAUTH_REDIRECT_URI = oauthRedirectUri || "";
+		process.env.VITE_OAUTH_METADATA = JSON.stringify(oauthClientMetadata);
 	};
 
 	return [
 		{
 			name: "atproto-oauth",
 			config: async (config, { command }) => {
-				_command = command;
+				viteCommand = command;
 				if (!config.server) config.server = {};
 				if (config.server.host !== LOOPBACK_HOST)
 					config.server.host = LOOPBACK_HOST;
 			},
 			configResolved: (config) => {
-				_config = config;
+				resolvedConfig = config;
 				readMetadata();
 				parseMetadata();
 				setupEnv();
@@ -76,10 +76,10 @@ export const AtprotoOAuth = (): Plugin[] => {
 			"oauth-client-metadata",
 			() => {
 				return [
-					`export default ${JSON.stringify(_metadata)}; `,
-					`export const SCOPE = ${JSON.stringify(_scope)};`,
-					`export const CLIENT_ID = ${JSON.stringify(_clientId)};`,
-					`export const REDIRECT_URI = ${JSON.stringify(_redirectUri)};`,
+					`export default ${JSON.stringify(oauthClientMetadata)}; `,
+					`export const SCOPE = ${JSON.stringify(oauthScope)};`,
+					`export const CLIENT_ID = ${JSON.stringify(oauthClientId)};`,
+					`export const REDIRECT_URI = ${JSON.stringify(oauthRedirectUri)};`,
 				].join("\n");
 			},
 		),
