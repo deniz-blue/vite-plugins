@@ -1,11 +1,11 @@
-import type { Plugin, ResolvedConfig } from "vite";
+import type { Plugin, ResolvedConfig, UserConfig } from "vite";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { VirtualModule } from "./VirtualModule.js";
 
 const LOOPBACK_HOST = "127.0.0.1";
 export const AtprotoOAuth = (): Plugin[] => {
-	let resolvedConfig: ResolvedConfig | null = null;
+	let userConfig: UserConfig | null = null;
 	let viteCommand: "build" | "serve" | null = null;
 
 	let oauthClientMetadata: Record<string, any> | null = null;
@@ -14,7 +14,7 @@ export const AtprotoOAuth = (): Plugin[] => {
 	let oauthRedirectUri: string | null = null;
 
 	const readMetadata = () => {
-		const path = join(resolvedConfig!.publicDir, "oauth-client-metadata.json");
+		const path = join(userConfig?.publicDir || "public", "oauth-client-metadata.json");
 		try {
 			const content = readFileSync(path, "utf-8");
 			oauthClientMetadata = JSON.parse(content);
@@ -37,8 +37,8 @@ export const AtprotoOAuth = (): Plugin[] => {
 			oauthClientId = oauthClientMetadata.client_id;
 			oauthRedirectUri = oauthClientMetadata.redirect_uris[0];
 		} else {
-			const host = resolvedConfig!.server?.host || LOOPBACK_HOST;
-			const port = resolvedConfig!.server?.port || 5173;
+			const host = userConfig?.server?.host || LOOPBACK_HOST;
+			const port = userConfig?.server?.port || 5173;
 			oauthRedirectUri = `http://${host}:${port}${new URL(oauthClientMetadata.redirect_uris[0]!).pathname}`;
 			oauthClientId =
 				`http://localhost?${new URLSearchParams([
@@ -53,19 +53,23 @@ export const AtprotoOAuth = (): Plugin[] => {
 		process.env.VITE_OAUTH_CLIENT_ID = oauthClientId || "";
 		process.env.VITE_OAUTH_REDIRECT_URI = oauthRedirectUri || "";
 		process.env.VITE_OAUTH_METADATA = JSON.stringify(oauthClientMetadata);
+		if (!userConfig) return;
+		userConfig.define ??= {};
+		userConfig.define["VITE_OAUTH_SCOPE"] = (oauthScope);
+		userConfig.define["VITE_OAUTH_CLIENT_ID"] = (oauthClientId);
+		userConfig.define["VITE_OAUTH_REDIRECT_URI"] = (oauthRedirectUri);
+		userConfig.define["VITE_OAUTH_METADATA"] = JSON.stringify(oauthClientMetadata);
 	};
 
 	return [
 		{
 			name: "atproto-oauth",
 			config: async (config, { command }) => {
+				userConfig = config;
 				viteCommand = command;
 				if (!config.server) config.server = {};
 				if (config.server.host !== LOOPBACK_HOST)
 					config.server.host = LOOPBACK_HOST;
-			},
-			configResolved: (config) => {
-				resolvedConfig = config;
 				readMetadata();
 				parseMetadata();
 				setupEnv();
