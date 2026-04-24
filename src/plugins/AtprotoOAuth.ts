@@ -53,12 +53,6 @@ export const AtprotoOAuth = (): Plugin[] => {
 		process.env.VITE_OAUTH_CLIENT_ID = oauthClientId || "";
 		process.env.VITE_OAUTH_REDIRECT_URI = oauthRedirectUri || "";
 		process.env.VITE_OAUTH_METADATA = JSON.stringify(oauthClientMetadata);
-		if (!userConfig) return;
-		userConfig.define ??= {};
-		userConfig.define["VITE_OAUTH_SCOPE"] = (oauthScope);
-		userConfig.define["VITE_OAUTH_CLIENT_ID"] = (oauthClientId);
-		userConfig.define["VITE_OAUTH_REDIRECT_URI"] = (oauthRedirectUri);
-		userConfig.define["VITE_OAUTH_METADATA"] = JSON.stringify(oauthClientMetadata);
 	};
 
 	return [
